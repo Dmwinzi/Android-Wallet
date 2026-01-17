@@ -18,7 +18,7 @@ interface WalletApiService {
         @Body request: BalanceRequest
     ): Response<BalanceResponse>
 
-    @POST("api/transactions/send")
+    @POST("/api/v1/transactions/send-money")
     suspend fun sendMoney(@Body request: SendMoneyRequest): Response<SendMoneyResponse>
 
 }
