@@ -19,4 +19,8 @@ interface TransactionDao {
 
     @Query("SELECT * FROM local_transactions WHERE syncStatus = 'FAILED'")
     suspend fun getFailedTransactions(): List<LocalTransactionEntity>
+
+    @Query("UPDATE local_transactions SET syncStatus = 'QUEUED', lastError = null WHERE clientTransactionId = :id")
+    suspend fun markForRetry(id: String)
+
 }

@@ -1,5 +1,7 @@
 package com.example.wallet.presentation.navigate
 
+import LocalTransactionsScreen
+import ProfileScreen
 import StatementScreen
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
@@ -8,9 +10,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 
 import com.example.wallet.presentation.login.HomeScreen
-import com.example.wallet.presentation.login.LocalTransactionsScreen
 import com.example.wallet.presentation.login.LoginScreen
-import com.example.wallet.presentation.sendmoney.ProfileScreen
 import com.example.wallet.presentation.sendmoney.SendMoneyScreen
 
 

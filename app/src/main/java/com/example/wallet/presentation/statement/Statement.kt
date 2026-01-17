@@ -95,7 +95,6 @@ fun StatementListWithSummary(transactions: List<TransactionResponse>) {
             }
         }
 
-        // REQUIREMENT: Total amount summary at bottom
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),

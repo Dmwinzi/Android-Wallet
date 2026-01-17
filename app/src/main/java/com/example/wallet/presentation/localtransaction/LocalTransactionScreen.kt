@@ -1,116 +1,162 @@
-package com.example.wallet.presentation.login
-
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
-import com.example.wallet.presentation.navigate.Screen
+import com.example.wallet.data.localDataSource.entity.LocalTransactionEntity
+import com.example.wallet.presentation.localtransaction.LocalTxnViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
-data class LocalTransaction(
-    val id: String,
-    val accountTo: String,
-    val amount: Double,
-    val syncStatus: String, // QUEUED / SYNCING / SYNCED / FAILED
-    val createdAt: Long,
-    val lastError: String? = null
-)
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LocalTransactionsScreen(navController: NavHostController) {
+fun LocalTransactionsScreen(
+    navController: NavHostController,
+    viewModel: LocalTxnViewModel = hiltViewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
 
-    // 🔹 Placeholder local transactions
-    val transactions = remember {
-        listOf(
-            LocalTransaction("1", "ACC987654321", 100.0, "QUEUED", System.currentTimeMillis()),
-            LocalTransaction("2", "ACC123456789", 50.0, "FAILED", System.currentTimeMillis() - 3600000, "Network error"),
-            LocalTransaction("3", "ACC111222333", 200.0, "SYNCED", System.currentTimeMillis() - 7200000)
-        ).sortedByDescending { it.createdAt } // newest first
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp)
-    ) {
-        Text(
-            text = "Local Transactions",
-            style = MaterialTheme.typography.headlineMedium
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        if (transactions.isEmpty()) {
-            Text("No local transactions found.", style = MaterialTheme.typography.bodyLarge)
-        } else {
-            LazyColumn(modifier = Modifier.weight(1f)) {
-                items(transactions) { txn ->
-                    LocalTransactionItem(txn)
-                    Divider()
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Local Transactions", fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(onClick = {navController.popBackStack()}) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        }
+    ) { padding ->
+        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+            when {
+                uiState.isLoading -> {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                }
+                uiState.transactions.isEmpty() -> {
+                    // REQUIREMENT: Empty State
+                    EmptyOutboxView()
+                }
+                else -> {
+                    // REQUIREMENT: Display all locally queued / newest first
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(
+                            items = uiState.transactions,
+                            key = { it.clientTransactionId }
+                        ) { txn ->
+                            LocalTransactionCard(
+                                txn = txn,
+                                onRetry = { viewModel.retryTransaction(txn.clientTransactionId) }
+                            )
+                        }
+                    }
                 }
             }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Button(
-            onClick = { navController.navigate(Screen.Home.route) },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Back to Home")
         }
     }
 }
 
 @Composable
-fun LocalTransactionItem(transaction: LocalTransaction) {
-    val dateFormat = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault())
-    Column(modifier = Modifier
-        .fillMaxWidth()
-        .padding(vertical = 8.dp)
+fun LocalTransactionCard(
+    txn: LocalTransactionEntity,
+    onRetry: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("To: ${txn.accountTo}", fontWeight = FontWeight.ExtraBold)
+                SyncStatusChip(txn.syncStatus)
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "KES ${String.format("%,.2f", txn.amount)}",
+                style = MaterialTheme.typography.titleMedium
+            )
+            val dateStr = SimpleDateFormat("dd MMM, HH:mm", Locale.getDefault()).format(Date(txn.createdAt))
+            Text(text = dateStr, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+
+            if (txn.syncStatus == "FAILED") {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Error: ${txn.lastError ?: "Unknown connection error"}",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
+                )
+
+                Button(
+                    onClick = onRetry,
+                    modifier = Modifier.align(Alignment.End).padding(top = 8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Retry & Sync Now")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SyncStatusChip(status: String) {
+    val color = when (status) {
+        "SYNCED" -> Color(0xFF2E7D32)
+        "FAILED" -> Color.Red
+        "SYNCING" -> Color(0xFF1976D2)
+        else -> Color.DarkGray // QUEUED
+    }
+
+    Surface(
+        color = color.copy(alpha = 0.1f),
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, color.copy(alpha = 0.5f))
     ) {
         Text(
-            text = dateFormat.format(Date(transaction.createdAt)),
-            style = MaterialTheme.typography.bodySmall
+            text = status,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+            style = MaterialTheme.typography.labelSmall,
+            color = color,
+            fontWeight = FontWeight.Bold
         )
-        Text(
-            text = "To: ${transaction.accountTo}",
-            style = MaterialTheme.typography.bodyMedium
-        )
-        Text(
-            text = "Amount: $${transaction.amount}",
-            style = MaterialTheme.typography.bodyMedium
-        )
-        Text(
-            text = "Status: ${transaction.syncStatus}",
-            style = MaterialTheme.typography.bodyMedium,
-            color = when (transaction.syncStatus) {
-                "FAILED" -> MaterialTheme.colorScheme.error
-                "SYNCED" -> MaterialTheme.colorScheme.primary
-                else -> MaterialTheme.colorScheme.onSurface
-            }
-        )
-        transaction.lastError?.let {
-            Text(
-                text = "Error: $it",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error
-            )
-        }
+    }
+}
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Retry button for FAILED transactions
-        if (transaction.syncStatus == "FAILED") {
-            Button(onClick = { /* TODO: enqueue WorkManager retry */ }) {
-                Text("Retry")
-            }
-        }
+@Composable
+fun EmptyOutboxView() {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text("No pending transactions", color = Color.Gray)
     }
 }

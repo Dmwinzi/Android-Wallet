@@ -19,7 +19,9 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import javax.inject.Singleton
 import android.content.Context
+import com.example.wallet.domain.usecases.GetLocalTransactionsUseCase
 import com.example.wallet.domain.usecases.GetStatementUseCase
+import com.example.wallet.domain.usecases.RetryLocalTransactionUseCase
 import dagger.hilt.android.qualifiers.ApplicationContext
 
 
@@ -45,8 +47,14 @@ object AppModule {
     @Singleton
     fun provideCustomerRepository(
         api: WalletApiService,
-        prefs: UserPreferenceManager
-    ): CustomerRepository = CustomerRepositoryImpl(api,prefs)
+        prefs: UserPreferenceManager,
+        transactionDao: TransactionDao,
+        workManager: WorkManager
+    ): CustomerRepository = CustomerRepositoryImpl(
+        api, prefs,
+        transactionDao = transactionDao,
+        workManager = workManager
+    )
 
     @Provides
     @Singleton
@@ -86,6 +94,22 @@ object AppModule {
     @Singleton
     fun provideWorkManager(@ApplicationContext context: Context): WorkManager {
         return WorkManager.getInstance(context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideGetLocalTransactionsUseCase(
+        repository: CustomerRepository
+    ): GetLocalTransactionsUseCase {
+        return GetLocalTransactionsUseCase(repository)
+    }
+
+    @Provides
+    @Singleton
+    fun provideRetryLocalTransactionUseCase(
+        repository: CustomerRepository
+    ): RetryLocalTransactionUseCase {
+        return RetryLocalTransactionUseCase(repository)
     }
 
 }

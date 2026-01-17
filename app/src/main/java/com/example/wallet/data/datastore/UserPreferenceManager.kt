@@ -32,6 +32,9 @@ class UserPreferenceManager(private val context: Context) {
     val customerIdFlow: Flow<String> = context.dataStore.data
         .map { it[CUSTOMER_ID] ?: "" }
 
+    val emailFlow: Flow<String> = context.dataStore.data
+    .map { it[EMAIL] ?: "" }
+
     suspend fun saveLoginDetails(
         name: String,
         id: String,
