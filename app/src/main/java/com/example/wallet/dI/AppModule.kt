@@ -38,7 +38,7 @@ object AppModule {
     @Singleton
     fun provideWalletApiService(): WalletApiService =
         Retrofit.Builder()
-            .baseUrl("http://192.168.0.103:8092/springboot-rest-api/")
+            .baseUrl("http://10.0.2.2:8092/springboot-rest-api/")
             .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(WalletApiService::class.java)
