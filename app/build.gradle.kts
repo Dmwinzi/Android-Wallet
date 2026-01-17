@@ -2,8 +2,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.dagger.hilt)
-    id("org.jetbrains.kotlin.kapt")
+    alias(libs.plugins.hilt.android)
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -52,13 +52,10 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.navigation.runtime.android)
-    implementation(libs.androidx.navigation.compose.android)
     implementation("androidx.datastore:datastore-preferences:1.1.0")
     implementation(libs.hilt.android)
-    implementation("com.squareup:javapoet:1.13.0")
-    kapt("com.squareup:javapoet:1.13.0")
-    kapt(libs.hilt.compiler)
-    implementation(libs.hilt.navigation.compose)
+    implementation(libs.androidx.hilt.navigation.compose)
+    ksp(libs.hilt.compiler)
     implementation(libs.retrofit)
     implementation(libs.retrofit.gson)
     implementation(libs.okhttp)
