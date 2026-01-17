@@ -38,12 +38,20 @@ class SyncTransactionWorker @AssistedInject constructor(
                 )
             )
 
-            if (response.isSuccessful && response.body()?.responseStatus == true) {
-                dao.updateTransaction(transaction.copy(syncStatus = "SYNCED"))
-                Result.success()
+            if (response.isSuccessful) {
+                val body = response.body()
+
+                if (body?.responseStatus == true) {
+                    dao.updateTransaction(transaction.copy(syncStatus = "SYNCED", lastError = null))
+                    Result.success()
+                } else {
+                    val errorMsg = body?.responseMessage ?: "Server declined transaction"
+                    handleRetry(transaction, errorMsg)
+                }
             } else {
-                handleRetry(transaction, response.message())
+                handleRetry(transaction, "Network Error: ${response.code()}")
             }
+
         } catch (e: Exception) {
             handleRetry(transaction, e.localizedMessage)
         }

@@ -101,7 +101,7 @@ fun HomeScreen(
                 HomeAction("Send", Icons.Default.Send, Screen.SendMoney.route),
                 HomeAction("Statement", Icons.Default.List, Screen.Statement.route),
                 HomeAction("Profile", Icons.Default.Person, Screen.Profile.route),
-                HomeAction("History", Icons.Default.Refresh, Screen.LocalTransactions.route)
+                HomeAction("Local Transactions", Icons.Default.Refresh, Screen.LocalTransactions.route)
             )
 
             LazyVerticalGrid(

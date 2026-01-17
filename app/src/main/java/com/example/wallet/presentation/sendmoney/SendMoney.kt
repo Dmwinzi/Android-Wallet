@@ -57,7 +57,7 @@ fun SendMoneyScreen(
             confirmButton = {
                 Button(onClick = {
                     showQueuedDialog = false
-                    viewModel.resetState() // Clean up state
+                    viewModel.resetState()
                     navController.popBackStack()
                 }) {
                     Text("Return to Dashboard")
