@@ -6,6 +6,7 @@ import com.example.wallet.data.remoteDataSource.WalletApiService
 import com.example.wallet.domain.repository.CustomerRepository
 import com.example.wallet.domain.usecases.LoginUseCase
 import com.example.wallet.data.repository.CustomerRepositoryImpl
+import com.example.wallet.domain.usecases.GetBalanceUseCase
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -43,4 +44,9 @@ object AppModule {
     @Singleton
     fun provideLoginUseCase(repository: CustomerRepository): LoginUseCase =
         LoginUseCase(repository)
+
+    @Provides
+    @Singleton
+    fun provideGetBalanceUseCase(repository: CustomerRepository): GetBalanceUseCase =
+        GetBalanceUseCase(repository)
 }

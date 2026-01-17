@@ -1,8 +1,10 @@
 package com.example.wallet.presentation.home
 
 data class HomeUiState(
-    val customerName: String = "Customer",
+    val customerName: String = "",
     val accountNo: String = "",
-    val balance: String = "XXXX",
-    val isBalanceVisible: Boolean = false
+    val customerId: String = "",
+    val balance: String = "0.00",
+    val isBalanceVisible: Boolean = false,
+    val isLoading: Boolean = false
 )

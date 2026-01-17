@@ -2,6 +2,8 @@ package com.example.wallet.data.repository
 
 import com.example.wallet.data.datastore.UserPreferenceManager
 import com.example.wallet.data.remoteDataSource.WalletApiService
+import com.example.wallet.data.remoteDataSource.dto.BalanceRequest
+import com.example.wallet.data.remoteDataSource.dto.BalanceResponse
 import com.example.wallet.data.remoteDataSource.dto.toDomain
 import com.example.wallet.domain.models.Customer
 import com.example.wallet.domain.repository.CustomerRepository
@@ -35,6 +37,19 @@ class CustomerRepositoryImpl @Inject constructor(
             } else {
                 val errorMsg = response.errorBody()?.string() ?: "Login failed"
                 Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun fetchBalance(customerId: String): Result<BalanceResponse> {
+        return try {
+            val response = api.getAccountBalance(BalanceRequest(customerId))
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                Result.failure(Exception("Error: ${response.code()} - ${response.message()}"))
             }
         } catch (e: Exception) {
             Result.failure(e)
