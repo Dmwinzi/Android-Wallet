@@ -1,98 +1,172 @@
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
-import com.example.wallet.presentation.navigate.Screen
-import java.text.NumberFormat
-import java.text.SimpleDateFormat
-import java.util.*
+import com.example.wallet.data.remoteDataSource.dto.TransactionResponse
+import com.example.wallet.presentation.statement.StatementUiState
+import com.example.wallet.presentation.statement.StatementViewModel
 
-data class Transaction(
-    val id: String,
-    val date: Long,
-    val description: String,
-    val amount: Double,
-    val direction: String
-)
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun StatementScreen(navController: NavHostController) {
+fun StatementScreen(
+    navController: NavHostController,
+    viewModel: StatementViewModel = hiltViewModel(),
+) {
+    val uiState by viewModel.uiState.collectAsState()
 
-
-    val transactions = remember {
-        listOf(
-            Transaction("1", System.currentTimeMillis(), "Salary", 1200.0, "IN"),
-            Transaction("2", System.currentTimeMillis() - 86400000, "Rent", 500.0, "OUT"),
-            Transaction("3", System.currentTimeMillis() - 172800000, "Coffee Shop", 8.5, "OUT")
-        )
-    }
-
-    val totalAmount = transactions.sumOf { if (it.direction == "IN") it.amount else -it.amount }
-    val currencyFormat = NumberFormat.getCurrencyInstance()
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp)
-    ) {
-        Text(
-            text = "Statement (Last 100)",
-            style = MaterialTheme.typography.headlineMedium
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        if (transactions.isEmpty()) {
-            Text("No transactions found.", style = MaterialTheme.typography.bodyLarge)
-        } else {
-            LazyColumn(modifier = Modifier.weight(1f)) {
-                items(transactions) { txn ->
-                    TransactionItem(txn)
-                    Divider()
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Statement", fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(onClick ={
+                        navController.popBackStack()
+                    } ) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
                 }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "Total: ${currencyFormat.format(totalAmount)}",
-                style = MaterialTheme.typography.bodyLarge
             )
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Button(
-            onClick = { navController.navigate(Screen.Home.route) },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Back to Home")
+    ) { padding ->
+        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+            when (val state = uiState) {
+                is StatementUiState.Loading -> {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                }
+                is StatementUiState.Error -> {
+                    ErrorMessage(state.message, onRetry = { viewModel.loadStatement() })
+                }
+                is StatementUiState.Success -> {
+                    if (state.transactions.isEmpty()) {
+                        // REQUIREMENT: Empty State
+                        EmptyStateView()
+                    } else {
+                        // REQUIREMENT: Scrollable List & Bottom Summary
+                        StatementListWithSummary(state.transactions)
+                    }
+                }
+            }
         }
     }
 }
 
 @Composable
-fun TransactionItem(transaction: Transaction) {
-    val dateFormat = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault())
-    Column(modifier = Modifier
-        .fillMaxWidth()
-        .padding(vertical = 8.dp)
+fun StatementListWithSummary(transactions: List<TransactionResponse>) {
+    val totalMovement = transactions.sumOf {
+        if (it.debitOrCredit.equals("CREDIT", true)) it.amount else -it.amount
+    }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(modifier = Modifier.weight(1f)) {
+            items(transactions) { txn ->
+                TransactionRow(txn)
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
+            }
+        }
+
+        // REQUIREMENT: Total amount summary at bottom
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(24.dp).fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Total Net Movement", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = "KES ${String.format("%,.2f", totalMovement)}",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = if (totalMovement >= 0) Color(0xFF2E7D32) else Color.Red
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun TransactionRow(txn: TransactionResponse) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = dateFormat.format(Date(transaction.date)),
-            style = MaterialTheme.typography.bodySmall
-        )
-        Text(
-            text = "${transaction.description} (${transaction.direction})",
-            style = MaterialTheme.typography.bodyMedium
-        )
-        Text(
-            text = "$${transaction.amount}",
-            style = MaterialTheme.typography.bodyMedium
-        )
+        Column(modifier = Modifier.weight(1f)) {
+            // Formatting: Description (Type) and Subtitle (ID)
+            Text(txn.transactionType, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge)
+            Text("Ref: ${txn.transactionId}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+            Text("Acc: ${txn.accountNo}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+        }
+
+        val isCredit = txn.debitOrCredit.equals("CREDIT", true)
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                text = "${if (isCredit) "+" else "-"} KES ${String.format("%,.2f", txn.amount)}",
+                color = if (isCredit) Color(0xFF2E7D32) else Color.Red,
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.bodyLarge
+            )
+            Text("Bal: ${String.format("%,.2f", txn.balance)}", style = MaterialTheme.typography.labelSmall)
+        }
+    }
+}
+
+@Composable
+fun EmptyStateView() {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text("No synced transactions found", color = Color.Gray)
+    }
+}
+
+@Composable
+fun ErrorMessage(message: String, onRetry: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(16.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(message, textAlign = TextAlign.Center, color = Color.Red)
+        Button(onClick = onRetry, modifier = Modifier.padding(top = 16.dp)) {
+            Text("Retry")
+        }
     }
 }

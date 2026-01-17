@@ -4,6 +4,8 @@ import com.example.wallet.data.datastore.UserPreferenceManager
 import com.example.wallet.data.remoteDataSource.WalletApiService
 import com.example.wallet.data.remoteDataSource.dto.BalanceRequest
 import com.example.wallet.data.remoteDataSource.dto.BalanceResponse
+import com.example.wallet.data.remoteDataSource.dto.StatementRequest
+import com.example.wallet.data.remoteDataSource.dto.TransactionResponse
 import com.example.wallet.data.remoteDataSource.dto.toDomain
 import com.example.wallet.domain.models.Customer
 import com.example.wallet.domain.repository.CustomerRepository
@@ -55,4 +57,18 @@ class CustomerRepositoryImpl @Inject constructor(
             Result.failure(e)
         }
     }
+
+    override suspend fun fetchStatement(customerId: String): Result<List<TransactionResponse>> {
+        return try {
+            val response = api.getLast100Transactions(StatementRequest(customerId))
+            if (response.isSuccessful) {
+                Result.success(response.body() ?: emptyList())
+            } else {
+                Result.failure(Exception("Error ${response.code()}: ${response.message()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
 }

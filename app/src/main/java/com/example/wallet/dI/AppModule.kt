@@ -19,6 +19,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import javax.inject.Singleton
 import android.content.Context
+import com.example.wallet.domain.usecases.GetStatementUseCase
 import dagger.hilt.android.qualifiers.ApplicationContext
 
 
@@ -56,6 +57,13 @@ object AppModule {
     @Singleton
     fun provideGetBalanceUseCase(repository: CustomerRepository): GetBalanceUseCase =
         GetBalanceUseCase(repository)
+
+    @Provides
+    @Singleton
+    fun provideGetStatementUseCase(
+        repository: CustomerRepository,
+        userPrefs: UserPreferenceManager
+    ): GetStatementUseCase = GetStatementUseCase(repository, userPrefs)
 
     @Provides
     @Singleton
